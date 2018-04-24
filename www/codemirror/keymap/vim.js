@@ -93,8 +93,6 @@
     { keys: 'gE', type: 'motion', motion: 'moveByWords', motionArgs: { forward: false, wordEnd: true, bigWord: true, inclusive: true }},
     { keys: '{', type: 'motion', motion: 'moveByParagraph', motionArgs: { forward: false, toJumplist: true }},
     { keys: '}', type: 'motion', motion: 'moveByParagraph', motionArgs: { forward: true, toJumplist: true }},
-    { keys: '(', type: 'motion', motion: 'moveBySentence', motionArgs: { forward: false }},
-    { keys: ')', type: 'motion', motion: 'moveBySentence', motionArgs: { forward: true }},
     { keys: '<C-f>', type: 'motion', motion: 'moveByPage', motionArgs: { forward: true }},
     { keys: '<C-b>', type: 'motion', motion: 'moveByPage', motionArgs: { forward: false }},
     { keys: '<C-d>', type: 'motion', motion: 'moveByScroll', motionArgs: { forward: true, explicitRepeat: true }},
@@ -257,65 +255,18 @@
     }
 
     function detachVimMap(cm, next) {
-      if (this == CodeMirror.keyMap.vim) {
+      if (this == CodeMirror.keyMap.vim)
         CodeMirror.rmClass(cm.getWrapperElement(), "cm-fat-cursor");
-        if (cm.getOption("inputStyle") == "contenteditable" && document.body.style.caretColor != null) {
-          disableFatCursorMark(cm);
-          cm.getInputField().style.caretColor = "";
-        }
-      }
 
       if (!next || next.attach != attachVimMap)
         leaveVimMode(cm);
     }
     function attachVimMap(cm, prev) {
-      if (this == CodeMirror.keyMap.vim) {
+      if (this == CodeMirror.keyMap.vim)
         CodeMirror.addClass(cm.getWrapperElement(), "cm-fat-cursor");
-        if (cm.getOption("inputStyle") == "contenteditable" && document.body.style.caretColor != null) {
-          enableFatCursorMark(cm);
-          cm.getInputField().style.caretColor = "transparent";
-        }
-      }
 
       if (!prev || prev.attach != attachVimMap)
         enterVimMode(cm);
-    }
-
-    function fatCursorMarks(cm) {
-      var ranges = cm.listSelections(), result = []
-      for (var i = 0; i < ranges.length; i++) {
-        var range = ranges[i]
-        if (range.empty()) {
-          if (range.anchor.ch < cm.getLine(range.anchor.line).length) {
-            result.push(cm.markText(range.anchor, Pos(range.anchor.line, range.anchor.ch + 1),
-                                    {className: "cm-fat-cursor-mark"}))
-          } else {
-            var widget = document.createElement("span")
-            widget.textContent = "\u00a0"
-            widget.className = "cm-fat-cursor-mark"
-            result.push(cm.setBookmark(range.anchor, {widget: widget}))
-          }
-        }
-      }
-      return result
-    }
-
-    function updateFatCursorMark(cm) {
-      var marks = cm.state.fatCursorMarks
-      if (marks) for (var i = 0; i < marks.length; i++) marks[i].clear()
-      cm.state.fatCursorMarks = fatCursorMarks(cm)
-    }
-
-    function enableFatCursorMark(cm) {
-      cm.state.fatCursorMarks = fatCursorMarks(cm)
-      cm.on("cursorActivity", updateFatCursorMark)
-    }
-
-    function disableFatCursorMark(cm) {
-      var marks = cm.state.fatCursorMarks
-      if (marks) for (var i = 0; i < marks.length; i++) marks[i].clear()
-      cm.state.fatCursorMarks = null
-      cm.off("cursorActivity", updateFatCursorMark)
     }
 
     // Deprecated, simply setting the keymap works again.
@@ -424,9 +375,6 @@
     }
     function isWhiteSpaceString(k) {
       return (/^\s*$/).test(k);
-    }
-    function isEndOfSentenceSymbol(k) {
-      return '.?!'.indexOf(k) != -1;
     }
     function inArray(val, arr) {
       for (var i = 0; i < arr.length; i++) {
@@ -846,7 +794,7 @@
         }
 
         function handleKeyNonInsertMode() {
-          if (handleMacroRecording() || handleEsc()) { return true; }
+          if (handleMacroRecording() || handleEsc()) { return true; };
 
           var keys = vim.inputState.keyBuffer = vim.inputState.keyBuffer + key;
           if (/^[1-9]\d*$/.test(keys)) { return true; }
@@ -871,7 +819,7 @@
         if (vim.insertMode) { command = handleKeyInsertMode(); }
         else { command = handleKeyNonInsertMode(); }
         if (command === false) {
-          return !vim.insertMode && key.length === 1 ? function() { return true; } : undefined;
+          return undefined;
         } else if (command === true) {
           // TODO: Look into using CodeMirror's multi-key handling.
           // Return no-op since we are caching the key. Counts as handled, but
@@ -1431,7 +1379,7 @@
         } else {
           if (vim.visualMode) {
             showPrompt(cm, { onClose: onPromptClose, prefix: ':', value: '\'<,\'>',
-                onKeyDown: onPromptKeyDown, selectValueOnOpen: false});
+                onKeyDown: onPromptKeyDown});
           } else {
             showPrompt(cm, { onClose: onPromptClose, prefix: ':',
                 onKeyDown: onPromptKeyDown});
@@ -1816,10 +1764,6 @@
         var dir = motionArgs.forward ? 1 : -1;
         return findParagraph(cm, head, motionArgs.repeat, dir);
       },
-      moveBySentence: function(cm, head, motionArgs) {
-        var dir = motionArgs.forward ? 1 : -1;
-        return findSentence(cm, head, motionArgs.repeat, dir);
-      },
       moveByScroll: function(cm, head, motionArgs, vim) {
         var scrollbox = cm.getScrollInfo();
         var curEnd = null;
@@ -2090,8 +2034,7 @@
         vimGlobalState.registerController.pushText(
             args.registerName, 'delete', text,
             args.linewise, vim.visualBlock);
-        var includeLineBreak = vim.insertMode
-        return clipCursorToContent(cm, finalHead, includeLineBreak);
+        return clipCursorToContent(cm, finalHead);
       },
       indent: function(cm, args, ranges) {
         var vim = cm.state.vim;
@@ -2646,32 +2589,25 @@
       incrementNumberToken: function(cm, actionArgs) {
         var cur = cm.getCursor();
         var lineStr = cm.getLine(cur.line);
-        var re = /(-?)(?:(0x)([\da-f]+)|(0b|0|)(\d+))/gi;
+        var re = /-?\d+/g;
         var match;
         var start;
         var end;
         var numberStr;
+        var token;
         while ((match = re.exec(lineStr)) !== null) {
+          token = match[0];
           start = match.index;
-          end = start + match[0].length;
+          end = start + token.length;
           if (cur.ch < end)break;
         }
         if (!actionArgs.backtrack && (end <= cur.ch))return;
-        if (match) {
-          var baseStr = match[2] || match[4]
-          var digits = match[3] || match[5]
+        if (token) {
           var increment = actionArgs.increase ? 1 : -1;
-          var base = {'0b': 2, '0': 8, '': 10, '0x': 16}[baseStr.toLowerCase()];
-          var number = parseInt(match[1] + digits, base) + (increment * actionArgs.repeat);
-          numberStr = number.toString(base);
-          var zeroPadding = baseStr ? new Array(digits.length - numberStr.length + 1 + match[1].length).join('0') : ''
-          if (numberStr.charAt(0) === '-') {
-            numberStr = '-' + baseStr + zeroPadding + numberStr.substr(1);
-          } else {
-            numberStr = baseStr + zeroPadding + numberStr;
-          }
+          var number = parseInt(token) + (increment * actionArgs.repeat);
           var from = Pos(cur.line, start);
           var to = Pos(cur.line, end);
+          numberStr = number.toString();
           cm.replaceRange(numberStr, from, to);
         } else {
           return;
@@ -3308,7 +3244,7 @@
       return cur;
     }
 
-    /*
+    /**
      * Returns the boundaries of the next word. If the cursor in the middle of
      * the word, then returns the boundaries of the current word, starting at
      * the cursor. If the cursor is at the start/end of a word, and we are going
@@ -3543,179 +3479,6 @@
       return { start: start, end: end };
     }
 
-    function findSentence(cm, cur, repeat, dir) {
-
-      /*
-        Takes an index object
-        {
-          line: the line string,
-          ln: line number,
-          pos: index in line,
-          dir: direction of traversal (-1 or 1)
-        }
-        and modifies the line, ln, and pos members to represent the
-        next valid position or sets them to null if there are
-        no more valid positions.
-       */
-      function nextChar(cm, idx) {
-        if (idx.pos + idx.dir < 0 || idx.pos + idx.dir >= idx.line.length) {
-          idx.ln += idx.dir;
-          if (!isLine(cm, idx.ln)) {
-            idx.line = null;
-            idx.ln = null;
-            idx.pos = null;
-            return;
-          }
-          idx.line = cm.getLine(idx.ln);
-          idx.pos = (idx.dir > 0) ? 0 : idx.line.length - 1;
-        }
-        else {
-          idx.pos += idx.dir;
-        }
-      }
-
-      /*
-        Performs one iteration of traversal in forward direction
-        Returns an index object of the new location
-       */
-      function forward(cm, ln, pos, dir) {
-        var line = cm.getLine(ln);
-        var stop = (line === "");
-
-        var curr = {
-          line: line,
-          ln: ln,
-          pos: pos,
-          dir: dir,
-        }
-
-        var last_valid = {
-          ln: curr.ln,
-          pos: curr.pos,
-        }
-
-        var skip_empty_lines = (curr.line === "");
-
-        // Move one step to skip character we start on
-        nextChar(cm, curr);
-
-        while (curr.line !== null) {
-          last_valid.ln = curr.ln;
-          last_valid.pos = curr.pos;
-
-          if (curr.line === "" && !skip_empty_lines) {
-            return { ln: curr.ln, pos: curr.pos, };
-          }
-          else if (stop && curr.line !== "" && !isWhiteSpaceString(curr.line[curr.pos])) {
-            return { ln: curr.ln, pos: curr.pos, };
-          }
-          else if (isEndOfSentenceSymbol(curr.line[curr.pos])
-            && !stop
-            && (curr.pos === curr.line.length - 1
-              || isWhiteSpaceString(curr.line[curr.pos + 1]))) {
-            stop = true;
-          }
-
-          nextChar(cm, curr);
-        }
-
-        /*
-          Set the position to the last non whitespace character on the last
-          valid line in the case that we reach the end of the document.
-        */
-        var line = cm.getLine(last_valid.ln);
-        last_valid.pos = 0;
-        for(var i = line.length - 1; i >= 0; --i) {
-          if (!isWhiteSpaceString(line[i])) {
-            last_valid.pos = i;
-            break;
-          }
-        }
-
-        return last_valid;
-
-      }
-
-      /*
-        Performs one iteration of traversal in reverse direction
-        Returns an index object of the new location
-       */
-      function reverse(cm, ln, pos, dir) {
-        var line = cm.getLine(ln);
-
-        var curr = {
-          line: line,
-          ln: ln,
-          pos: pos,
-          dir: dir,
-        }
-
-        var last_valid = {
-          ln: curr.ln,
-          pos: null,
-        };
-
-        var skip_empty_lines = (curr.line === "");
-
-        // Move one step to skip character we start on
-        nextChar(cm, curr);
-
-        while (curr.line !== null) {
-
-          if (curr.line === "" && !skip_empty_lines) {
-            if (last_valid.pos !== null) {
-              return last_valid;
-            }
-            else {
-              return { ln: curr.ln, pos: curr.pos };
-            }
-          }
-          else if (isEndOfSentenceSymbol(curr.line[curr.pos])
-              && last_valid.pos !== null
-              && !(curr.ln === last_valid.ln && curr.pos + 1 === last_valid.pos)) {
-            return last_valid;
-          }
-          else if (curr.line !== "" && !isWhiteSpaceString(curr.line[curr.pos])) {
-            skip_empty_lines = false;
-            last_valid = { ln: curr.ln, pos: curr.pos }
-          }
-
-          nextChar(cm, curr);
-        }
-
-        /*
-          Set the position to the first non whitespace character on the last
-          valid line in the case that we reach the beginning of the document.
-        */
-        var line = cm.getLine(last_valid.ln);
-        last_valid.pos = 0;
-        for(var i = 0; i < line.length; ++i) {
-          if (!isWhiteSpaceString(line[i])) {
-            last_valid.pos = i;
-            break;
-          }
-        }
-        return last_valid;
-      }
-
-      var curr_index = {
-        ln: cur.line,
-        pos: cur.ch,
-      };
-
-      while (repeat > 0) {
-        if (dir < 0) {
-          curr_index = reverse(cm, curr_index.ln, curr_index.pos, dir);
-        }
-        else {
-          curr_index = forward(cm, curr_index.ln, curr_index.pos, dir);
-        }
-        repeat--;
-      }
-
-      return Pos(curr_index.ln, curr_index.pos);
-    }
-
     // TODO: perhaps this finagling of start and end positions belonds
     // in codemirror/replaceRange?
     function selectCompanionObject(cm, head, symb, inclusive) {
@@ -3734,8 +3497,8 @@
       // cursor is on a matching open bracket.
       var offset = curChar === openSym ? 1 : 0;
 
-      start = cm.scanForBracket(Pos(cur.line, cur.ch + offset), -1, undefined, {'bracketRegex': bracketRegexp});
-      end = cm.scanForBracket(Pos(cur.line, cur.ch + offset), 1, undefined, {'bracketRegex': bracketRegexp});
+      start = cm.scanForBracket(Pos(cur.line, cur.ch + offset), -1, null, {'bracketRegex': bracketRegexp});
+      end = cm.scanForBracket(Pos(cur.line, cur.ch + offset), 1, null, {'bracketRegex': bracketRegexp});
 
       if (!start || !end) {
         return { start: cur, end: cur };
@@ -3865,15 +3628,7 @@
       }
     }
     function splitBySlash(argString) {
-      return splitBySeparator(argString, '/');
-    }
-
-    function findUnescapedSlashes(argString) {
-      return findUnescapedSeparators(argString, '/');
-    }
-
-    function splitBySeparator(argString, separator) {
-      var slashes = findUnescapedSeparators(argString, separator) || [];
+      var slashes = findUnescapedSlashes(argString) || [];
       if (!slashes.length) return [];
       var tokens = [];
       // in case of strings like foo/bar
@@ -3885,15 +3640,12 @@
       return tokens;
     }
 
-    function findUnescapedSeparators(str, separator) {
-      if (!separator)
-        separator = '/';
-
+    function findUnescapedSlashes(str) {
       var escapeNextChar = false;
       var slashes = [];
       for (var i = 0; i < str.length; i++) {
         var c = str.charAt(i);
-        if (!escapeNextChar && c == separator) {
+        if (!escapeNextChar && c == '/') {
           slashes.push(i);
         }
         escapeNextChar = !escapeNextChar && (c == '\\');
@@ -4226,15 +3978,6 @@
         var history = cm.doc.history.done;
         var event = history[history.length - 2];
         return event && event.ranges && event.ranges[0].head;
-      } else if (markName == '.') {
-        if (cm.doc.history.lastModTime == 0) {
-          return  // If no changes, bail out; don't bother to copy or reverse history array.
-        } else {
-          var changeHistory = cm.doc.history.done.filter(function(el){ if (el.changes !== undefined) { return el } });
-          changeHistory.reverse();
-          var lastEditPos = changeHistory[0].changes[0].to;
-        }
-        return lastEditPos;
       }
 
       var mark = vim.marks[markName];
@@ -4759,7 +4502,7 @@
               'any other getSearchCursor implementation.');
         }
         var argString = params.argString;
-        var tokens = argString ? splitBySeparator(argString, argString[0]) : [];
+        var tokens = argString ? splitBySlash(argString) : [];
         var regexPart, replacePart = '', trailing, flagsPart, count;
         var confirm = false; // Whether to confirm each replace.
         var global = false; // True to replace all instances on a line, false to replace only 1.
@@ -4803,7 +4546,7 @@
               global = true;
               flagsPart.replace('g', '');
             }
-            regexPart = regexPart.replace(/\//g, "\\/") + '/' + flagsPart;
+            regexPart = regexPart + '/' + flagsPart;
           }
         }
         if (regexPart) {
@@ -5019,7 +4762,7 @@
       }
       if (!confirm) {
         replaceAll();
-        if (callback) { callback(); }
+        if (callback) { callback(); };
         return;
       }
       showPrompt(cm, {
@@ -5045,8 +4788,7 @@
       // so as to update the ". register as expected in real vim.
       var text = [];
       if (!isPlaying) {
-        var selLength = lastChange.inVisualBlock && vim.lastSelection ?
-            vim.lastSelection.visualBlock.height : 1;
+        var selLength = lastChange.inVisualBlock ? vim.lastSelection.visualBlock.height : 1;
         var changes = lastChange.changes;
         var text = [];
         var i = 0;
@@ -5155,7 +4897,7 @@
             exitInsertMode(cm);
           }
         }
-      }
+      };
       macroModeState.isPlaying = false;
     }
 
@@ -5359,7 +5101,7 @@
         exitInsertMode(cm);
       }
       macroModeState.isPlaying = false;
-    }
+    };
 
     function repeatInsertModeChanges(cm, changes, repeat) {
       function keyHandler(binding) {

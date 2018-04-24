@@ -1,8 +1,8 @@
-import { indexOf, lst } from "../util/misc.js"
+import { indexOf, lst } from "../util/misc"
 
-import { cmp } from "./pos.js"
-import { sawCollapsedSpans } from "./saw_special_spans.js"
-import { getLine, isLine, lineNo } from "./utils_line.js"
+import { cmp } from "./pos"
+import { sawCollapsedSpans } from "./saw_special_spans"
+import { getLine, isLine, lineNo } from "./utils_line"
 
 // TEXTMARKER SPANS
 

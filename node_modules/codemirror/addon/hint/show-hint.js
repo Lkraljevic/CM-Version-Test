@@ -121,6 +121,7 @@
       var picked = (this.widget && this.widget.picked) || (first && this.options.completeSingle);
       if (this.widget) this.widget.close();
 
+      if (data && this.data && isNewCompletion(this.data, data)) return;
       this.data = data;
 
       if (data && data.list.length) {
@@ -133,6 +134,11 @@
       }
     }
   };
+
+  function isNewCompletion(old, nw) {
+    var moved = CodeMirror.cmpPos(nw.from, old.from)
+    return moved > 0 && old.to.ch - old.from.ch != nw.to.ch - nw.from.ch
+  }
 
   function parseOptions(cm, pos, options) {
     var editor = cm.options.hintOptions;
@@ -296,7 +302,7 @@
       setTimeout(function(){cm.focus();}, 20);
     });
 
-    CodeMirror.signal(data, "select", completions[this.selectedHint], hints.childNodes[this.selectedHint]);
+    CodeMirror.signal(data, "select", completions[0], hints.firstChild);
     return true;
   }
 
@@ -397,13 +403,12 @@
   });
 
   CodeMirror.registerHelper("hint", "fromList", function(cm, options) {
-    var cur = cm.getCursor(), token = cm.getTokenAt(cur)
-    var term, from = CodeMirror.Pos(cur.line, token.start), to = cur
-    if (token.start < cur.ch && /\w/.test(token.string.charAt(cur.ch - token.start - 1))) {
-      term = token.string.substr(0, cur.ch - token.start)
+    var cur = cm.getCursor(), token = cm.getTokenAt(cur);
+    var to = CodeMirror.Pos(cur.line, token.end);
+    if (token.string && /\w/.test(token.string[token.string.length - 1])) {
+      var term = token.string, from = CodeMirror.Pos(cur.line, token.start);
     } else {
-      term = ""
-      from = cur
+      var term = "", from = to;
     }
     var found = [];
     for (var i = 0; i < options.words.length; i++) {

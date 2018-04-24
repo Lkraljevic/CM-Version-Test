@@ -84,37 +84,28 @@ CodeMirror.defineMode('shell', function() {
   function tokenString(quote, style) {
     var close = quote == "(" ? ")" : quote == "{" ? "}" : quote
     return function(stream, state) {
-      var next, escaped = false;
+      var next, end = false, escaped = false;
       while ((next = stream.next()) != null) {
         if (next === close && !escaped) {
-          state.tokens.shift();
+          end = true;
           break;
-        } else if (next === '$' && !escaped && quote !== "'" && stream.peek() != close) {
+        }
+        if (next === '$' && !escaped && quote !== "'") {
           escaped = true;
           stream.backUp(1);
           state.tokens.unshift(tokenDollar);
           break;
-        } else if (!escaped && quote !== close && next === quote) {
+        }
+        if (!escaped && next === quote && quote !== close) {
           state.tokens.unshift(tokenString(quote, style))
           return tokenize(stream, state)
-        } else if (!escaped && /['"]/.test(next) && !/['"]/.test(quote)) {
-          state.tokens.unshift(tokenStringStart(next, "string"));
-          stream.backUp(1);
-          break;
         }
         escaped = !escaped && next === '\\';
       }
+      if (end || !escaped) state.tokens.shift();
       return style;
     };
   };
-
-  function tokenStringStart(quote, style) {
-    return function(stream, state) {
-      state.tokens[0] = tokenString(quote, style)
-      stream.next()
-      return tokenize(stream, state)
-    }
-  }
 
   var tokenDollar = function(stream, state) {
     if (state.tokens.length > 1) stream.eat('$');
@@ -144,8 +135,5 @@ CodeMirror.defineMode('shell', function() {
 });
 
 CodeMirror.defineMIME('text/x-sh', 'shell');
-// Apache uses a slightly different Media Type for Shell scripts
-// http://svn.apache.org/repos/asf/httpd/httpd/trunk/docs/conf/mime.types
-CodeMirror.defineMIME('application/x-sh', 'shell');
 
 });

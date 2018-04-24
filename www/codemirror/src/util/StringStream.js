@@ -1,4 +1,4 @@
-import { countColumn } from "./misc.js"
+import { countColumn } from "./misc"
 
 // STRING STREAM
 
@@ -80,10 +80,6 @@ class StringStream {
   lookAhead(n) {
     let oracle = this.lineOracle
     return oracle && oracle.lookAhead(n)
-  }
-  baseToken() {
-    let oracle = this.lineOracle
-    return oracle && oracle.baseToken(this.pos)
   }
 }
 

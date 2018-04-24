@@ -1,7 +1,7 @@
-import { elt, removeChildren } from "../util/dom.js"
-import { indexOf } from "../util/misc.js"
+import { elt, removeChildren } from "../util/dom"
+import { indexOf } from "../util/misc"
 
-import { updateGutterSpace } from "./update_display.js"
+import { updateGutterSpace } from "./update_display"
 
 // Rebuild the gutter elements, ensure the margin to the left of the
 // code matches their width.
